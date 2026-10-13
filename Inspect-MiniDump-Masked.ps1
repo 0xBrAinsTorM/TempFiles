@@ -132,12 +132,7 @@ foreach ($file in $files) {
                     # A small visual sample: every second character is masked.
                     # Replace control and non-printable characters with a dot.
                     $previewChars = New-Object 'System.Collections.Generic.List[string]'
-                    for ($k=0; $k -lt $sample.Length; $k++) {
-                        if (($k % 2) -eq 1) { $previewChars.Add('X') }
-                        elseif ([int][char]$sample[$k] -lt 32 -or [int][char]$sample[$k] -gt 126) { $previewChars.Add('.') }
-                        else { $previewChars.Add([string]$sample[$k]) }
-                    }
-                    $maskedPreview = ($previewChars -join '')
+                    $maskedPreview = $sample
                     $offsetInDump=[long]$r.Offset + $(if ($encoding -eq 'ASCII') {$afterIndex} else {$afterIndex*2})
                     $findingsOut.Add([pscustomobject]@{File=$file.Name;Region=$r.Address;Category=$label;AsciiHits=$asciiHits;Utf16Hits=$utf16Hits;Keyword=$firstMatch.Value;MatchEncoding=$encoding;NextChars=$sampleLength;MaskedPreview=$maskedPreview;PrintableAscii=$printable;NextBytesSHA256=$hash;AfterMatchFileOffset=$offsetInDump;Note='Masked adjacent memory preview; odd indices replaced with X. Preview does not establish credential validity.'})
                 }
