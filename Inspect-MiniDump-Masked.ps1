@@ -122,7 +122,7 @@ foreach ($file in $files) {
                     $encoding=if ($asciiHits -gt 0) {'ASCII'} else {'UTF-16LE'}
                     $sourceText=if ($asciiHits -gt 0) {$raw} else {$wide}
                     $afterIndex=$firstMatch.Index+$firstMatch.Length
-                    $sampleLength=[Math]::Min(10,[Math]::Max(0,$sourceText.Length-$afterIndex))
+                    $sampleLength=[Math]::Min(50,[Math]::Max(0,$sourceText.Length-$afterIndex))
                     $sample=if ($sampleLength -gt 0) {$sourceText.Substring($afterIndex,$sampleLength)} else {''}
                     $sampleBytes=if ($encoding -eq 'ASCII') {[Text.Encoding]::GetEncoding(28591).GetBytes($sample)} else {[Text.Encoding]::Unicode.GetBytes($sample)}
                     $sha=[Security.Cryptography.SHA256]::Create()
