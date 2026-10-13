@@ -1,0 +1,44 @@
+$file = "C:\Temp\SERVER01.dmp"
+
+$bytes = [System.IO.File]::ReadAllBytes($file)
+
+# Minidump-Header auslesen
+$signature = [System.Text.Encoding]::ASCII.GetString($bytes, 0, 4)
+$version = [BitConverter]::ToUInt32($bytes, 4)
+$streams = [BitConverter]::ToUInt32($bytes, 8)
+$directory = [BitConverter]::ToUInt32($bytes, 12)
+
+Write-Host "Signatur: $signature"
+Write-Host "Version: $version"
+Write-Host "Anzahl Datenstreams: $streams"
+Write-Host "Stream-Verzeichnis: $directory"
+===========
+
+$streamNames = @{
+    3  = "ThreadList"
+    4  = "ModuleList"
+    5  = "MemoryList"
+    6  = "Exception"
+    7  = "SystemInfo"
+    9  = "Memory64List"
+    12 = "HandleData"
+    15 = "MiscInfo"
+    16 = "MemoryInfoList"
+}
+
+for ($i = 0; $i -lt $streams; $i++) {
+    $offset = [int]$directory + ($i * 12)
+
+    if ($offset + 12 -gt $bytes.Length) {
+        Write-Host "Ungueltiger Verzeichniseintrag"
+        break
+    }
+
+    $type = [BitConverter]::ToUInt32($bytes, $offset)
+    $size = [BitConverter]::ToUInt32($bytes, $offset + 4)
+
+    $name = $streamNames[[int]$type]
+    if (-not $name) { $name = "Unbekannt" }
+
+    Write-Host "Typ: $type ($name) - Groesse: $size Bytes"
+}
